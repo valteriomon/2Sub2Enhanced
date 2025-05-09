@@ -155,7 +155,7 @@
         const reader = new FileReader();
         reader.onload = async (e) => {  // Make this function async as well
           const arrayBuffer = e.target.result;
-          const decoder = new TextDecoder('windows-1252'); 
+          const decoder = new TextDecoder('utf-8'); 
           const decodedText = decoder.decode(arrayBuffer);
 
           try {
