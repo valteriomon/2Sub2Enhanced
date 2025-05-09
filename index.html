@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="es">
+  <meta charset="UTF-8">
+  <style>
+    .win98popup {
+      display: flex;
+      flex-flow: column nowrap;
+      justify-content: space-between;
+      align-items: center;
+      font-family: "Microsoft Sans Serif", sans-serif;
+      background: #c2c6ca;
+      font-size: 12px;
+      -webkit-font-smoothing: none;
+      width: 265px;
+      height: 140px;
+      box-shadow: 0.5px 0.5px 0 0.5px black, inset 1px 1px #C2C6CA, inset -1px -1px #85898d, inset 2px 2px white;
+    }
+
+    .win98popup button {
+      background: #c2c6ca;
+      border: none;
+      padding: 0;
+      border-radius: 0;
+      outline: none;
+    }
+
+    .shadow {
+      box-shadow: 0.5px 0.5px 0 0.5px black, inset 1px 1px white,
+        inset -1px -1px #85898d;
+    }
+
+    .bar {
+      display: flex;
+      flex-flow: row nowrap;
+      font-weight: bold;
+      justify-content: space-between;
+      width: calc(100% - 11px);
+      height: 13px;
+      color: white;
+      background: #00a;
+      padding: 2px 3px 3px;
+      margin: 3px 2px 1px 3px;
+    }
+
+    .bar p {
+      margin: 0;
+    }
+
+    .bar button {
+      width: 15px;
+      height: 13px;
+    }
+
+    .bar button:active {
+      box-shadow: 0.5px 0.5px 0 0.5px white, inset 1px 1px black,
+        inset -1px -1px #c2c6ca, inset 2px 2px #85898d;
+    }
+
+    .bar button svg {
+      margin: 3px 3px 3px 4px;
+    }
+
+    .buttons {
+      display: flex;
+      flex-flow: column nowrap;
+      margin: 1px 15px 14px 14px;
+      align-items: center;
+      width: 100%;
+    }
+
+    .buttons label {
+      width: 74px;
+      height: 22px;
+      display: grid;
+      cursor: pointer;
+      box-shadow: 0.5px 0.5px 0 0.5px black, inset 1px 1px white, inset -1px -1px #85898d;
+    }
+
+    .buttons label:hover {
+      background-color: #bbb;
+    }
+
+    .buttons label:focus,
+    .buttons label:active {
+      outline: none;
+      box-shadow: 0.5px 0.5px 0 0.5px black, inset 1px 1px black, inset -1px -1px #85898d, inset 2px 2px white, inset -2px -2px #85898d;
+    }
+
+    .buttons label p {
+      font-size: 12px;
+      margin: auto;
+      grid-column: 1;
+      grid-row: 1;
+    }
+
+    .buttons input[type="file"] {
+      display: none;
+    }
+
+    .filename {
+      margin-top: 5px;
+      font-size: 11px;
+      color: black;
+      margin-left: 10px;
+      margin-right: 10px;
+    }
+
+    html, body {
+      height: 100%;
+    }
+
+    body {
+      margin: 0;
+      background: #55aaaa;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+  </style>
+  <script src="./enhancer.js"></script>
+
+  <body>
+    <div class="win98popup shadow">
+      <div class="bar">
+        <p>2 Sub 2 Enhanced</p>
+        <button class="shadow">
+          <svg xmlns="http://www.w3.org/2000/svg" width="8px" height="7px" viewBox="0 0 8 7" fill-rule="evenodd" stroke-linejoin="round" stroke-miterlimit="2"><path d="M1 6V5h1V4h1V3h2v1h1v1h1v1h1v1H6V6H5V5H3v1H2v1H0V6h1zm0-4V1H0V0h2v1h1v1h2V1h1V0h2v1H7v1H6v1H2V2H1z"/></svg>
+        </button>
+      </div>
+      <section>
+        <p>Elegir subtítulo a optimizar.</p>
+      </section>
+      <div class="buttons">
+        <label for="fileInput"><p>Subir</p></label>
+        <input type="file" id="fileInput" accept=".srt" />
+        <div class="filename" id="filename">Ningún archivo</div>
+      </div>
+    </div>
+
+    <script>
+      const fileInput = document.getElementById('fileInput');
+      const filenameDisplay = document.getElementById('filename');
+
+      const cps = 25;
+      const maxVariation = 700;
+      const minDuration = 900;
+      const method = 1;
+
+      fileInput.addEventListener('change', async () => {  // Make this function async
+        const file = fileInput.files[0];
+        if (!file) return;
+
+        filenameDisplay.textContent = file.name;
+
+        const reader = new FileReader();
+        reader.onload = async (e) => {  // Make this function async as well
+          const arrayBuffer = e.target.result;
+          const decoder = new TextDecoder('windows-1252'); 
+          const decodedText = decoder.decode(arrayBuffer);
+
+          try {
+            const ocrRules = await fetch('./ocr_rules.json').then(res => res.json());
+            const ocr = new Ocr(ocrRules);
+
+            const subtitle = {};
+            const totalSegmentsOverCps = [];
+            const ocrCorrections = [];
+
+            const segments = decodedText.split(/\n\s*\n/);
+            segments.forEach((segment, segmentKey) => {
+              if(!segment.length) return;
+
+              const segmentObject = {};
+              segmentObject.sequence = segmentKey + 1;
+
+              const lines = segment.split(/\r?\n/);
+              lines.forEach((line, key) => {
+                if (/\d{2}:\d{2}:\d{2},\d{3} --> \d{2}:\d{2}:\d{2},\d{3}/.test(line)) {
+                  const matches = line.match(/\d+/g).map(Number); // Extract all numbers
+                  if (matches.length === 8) {
+                    const [
+                      startHour, startMinute, startSecond, startMillisecond,
+                      endHour, endMinute, endSecond, endMillisecond
+                    ] = matches;
+
+                    segmentObject.startHour = startHour;
+                    segmentObject.startMinute = startMinute;
+                    segmentObject.startSecond = startSecond;
+                    segmentObject.startMillisecond = startMillisecond;
+                    segmentObject.endHour = endHour;
+                    segmentObject.endMinute = endMinute;
+                    segmentObject.endSecond = endSecond;
+                    segmentObject.endMillisecond = endMillisecond;
+
+                    segmentObject.startTimeInMilliseconds = calculateMilliseconds(startHour, startMinute, startSecond, startMillisecond);
+                    segmentObject.endTimeInMilliseconds = calculateMilliseconds(endHour, endMinute, endSecond, endMillisecond);
+                    segmentObject.sequenceDuration = segmentObject.endTimeInMilliseconds - segmentObject.startTimeInMilliseconds;
+
+                    segmentObject.startTimeInMillisecondsOriginal = segmentObject.startTimeInMilliseconds;
+                    segmentObject.endTimeInMillisecondsOriginal = segmentObject.endTimeInMilliseconds;
+                    segmentObject.sequenceDurationOriginal = segmentObject.sequenceDuration;
+                  }
+                }
+              });
+
+              subtitle[segmentKey] = segmentObject;
+
+              segmentObject.totalCharacters = 0;
+
+              for (let i = 2; i <= lines.length - 1; i++) {
+                const textLine = `textLine${i - 1}`;
+                const line = lines[i];  // Use the `lines` array directly here
+
+                if (line && line.trim() !== '') {
+                  if (ocr === null || ocr === undefined) {
+                    segmentObject[textLine] = line;
+                  } else {
+                    const ocrCheckResult = ocr.ocrCheck(line);
+                    if (ocrCheckResult && Object.keys(ocrCheckResult).length > 0) {
+                      if (!ocrCorrections[segmentObject.sequence]) {
+                        ocrCorrections[segmentObject.sequence] = [];
+                      }
+                      segmentObject[textLine] = ocrCheckResult.ocredLine;
+                      ocrCorrections[segmentObject.sequence].push({
+                        found: ocrCheckResult.found,
+                        replaced: ocrCheckResult.replaced
+                      });
+                    } else {
+                      segmentObject[textLine] = line;
+                    }
+                  }
+
+                  segmentObject.totalCharacters += [...line].length; // supports multibyte characters
+                }
+              }
+
+              if (segmentObject.sequenceDuration && segmentObject.totalCharacters) {
+                segmentObject.cps = calculateCps(segmentObject.sequenceDuration, segmentObject.totalCharacters);
+                if (segmentObject.cps > cps) {
+                  totalSegmentsOverCps.push(segmentKey);
+                }
+              }
+
+              if (segmentObject.totalCharacters > 0) {
+                subtitle[segmentKey] = segmentObject;
+              }
+
+            });
+
+
+            // === INTEGRITY CHECK ===
+            let objectCorruption = false;
+            const errors = {};
+
+            // Cast object to array of keys (subtitle is assumed to be an object like {0: {}, 1: {}, ...})
+            const subtitleKeys = Object.keys(subtitle);
+            
+            if (subtitleKeys.length === 0) {
+              errors.emptyObject = 'El parseo del subtítulo devolvió un objeto vacío.';
+              objectCorruption = true;
+            } else {
+              for (let i = 0; i < subtitleKeys.length && !objectCorruption; i++) {
+                const segment = subtitle[i];
+                if (!segment) {
+                  errors.missingSegment = `No se encuentra la secuencia ${i + 1}`;
+                  objectCorruption = true;
+                } else {
+                  const elementCount = Object.keys(segment).length;
+                  if (elementCount < 18 || elementCount > 20) {
+                    errors.missingProperties = `Propiedades faltantes en la secuencia ${i + 1}`;
+                    objectCorruption = true;
+                  }
+                }
+              }
+            }
+
+            if (objectCorruption) {
+              console.error(errors);
+              throw new Error(JSON.stringify(errors)); // or handle as needed
+            }
+
+            // === OCR FEEDBACK TABLE ===
+            let ocrTable = '<table class="table table-striped ocr-table">';
+            for (const [sequenceKey, sequenceValue] of Object.entries(ocrCorrections)) {
+              ocrTable += `<tr><td colspan="2">${sequenceKey}</td></tr>`;
+              for (const line of sequenceValue) {
+                ocrTable += `<tr><td>${line.found}</td><td>${line.replaced}</td></tr>`;
+              }
+            }
+            ocrTable += '</table>';
+
+            // === FINAL CHECK ===
+            const totalSequences = subtitleKeys.length;
+            const originalLinesOverCps = totalSegmentsOverCps.length;
+            const lastLine = subtitle[totalSequences - 1]; 
+
+            if (lastLine) {
+              const hash = await hashString(lastLine.textLine1);
+              if (hash === '81a956ff50632bded4f04cff674ca22d5e5932f8217dcaa8441ceb6d4c1be19b') {
+                errors.alreadyEnhanced = 'Subtítulo ya optimizado';
+                throw new Error(JSON.stringify(errors));
+              }
+            }
+
+            console.log(subtitle)
+
+            // Switch block should also await if any function in the case is async
+            switch(method) {
+              case 0:
+                  // Sub original
+                  // printEnhancedSubtitle(subtitle, totalSequences);
+                  break;
+              case 1:
+                  // (-1|-2|-3|1|2|3) minificado
+                  let tempFilename = await downloadEnhancedSubtitle(runMethod1(subtitle, totalSegmentsOverCps, cps, maxVariation, minDuration), totalSequences, filenameDisplay.textContent);
+                  break;
+              case 2:
+                  // (-1|-2|-3|1|2|3) **** LEGACY ****
+                  // await downloadEnhancedSubtitle(runMethod2(subtitle, totalSegmentsOverCps, cps, maxVariation, minDuration), totalSequences, filename);
+                  break;
+              case 3:
+                  // (1|-1|2|-2|3|-3) minificado
+                  // await downloadEnhancedSubtitle(runMethod3(subtitle, totalSegmentsOverCps, cps, maxVariation, minDuration), totalSequences, filename);
+                  break;
+              case 4:
+                  // printEnhancedSubtitle(runMethod1(subtitle, totalSegmentsOverCps, cps, maxVariation, minDuration), totalSequences, filename);
+                  return;  // Terminate function execution similar to 'die()' in PHP
+            }
+
+            // let afterEnhancementLinesOverCps = checkAllLinesCps(subtitle, 25).length;
+            // let enhancedLines = originalLinesOverCps - afterEnhancementLinesOverCps;
+
+            // let threadMessage = `[CENTER][IMG]http://imagenes.subadictos.net/novedad/SubsDisponibles.gif[/IMG]\n\n[B][SIZE=4]Capítulo: [COLOR="#FF0000"]${postArray.episode_number}[/COLOR].[/SIZE][/B]\n\n[SIZE=3]Agradecimientos a:\nTraducción: [B]${postArray.translation}[/B]`;
+
+            // if (postArray.editor && postArray.editor.trim() !== "") {
+            //     threadMessage += `\nCorrección: [B]${postArray.editor}[/B]`;
+            // }
+
+            // threadMessage += "[/SIZE][/CENTER]";
+
+            // let efficiencyMessage = (originalLinesOverCps) 
+            //     ? `${(enhancedLines * 100 / originalLinesOverCps).toFixed(1)}% de eficiencia en la optimización.`
+            //     : '¡No había líneas que optimizar!';
+
+            // let enhancementMessage = `${enhancedLines} líneas mejoradas de ${originalLinesOverCps} que superaban los 25 CPS.`;
+
+            // // Assuming that the following is some form of data you need to send:
+            // let data = {
+            //     filename: filename,
+            //     tempFilename: tempFilename,
+            //     threadMessage: threadMessage,
+            //     efficiencyMessage: efficiencyMessage,
+            //     enhancementMessage: enhancementMessage,
+            //     ocrCorrections: ocrTable
+            // };
+
+          } catch (error) {
+            console.error('Error processing subtitle:', error);
+          }
+        };
+
+        reader.readAsArrayBuffer(file);
+      });
+
+    </script>
+  </body>
+</html>
