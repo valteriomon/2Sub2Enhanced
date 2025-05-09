@@ -98,11 +98,11 @@
     }
 
     .filename {
-      margin-top: 5px;
+      margin-top: 10px;
       font-size: 11px;
       color: black;
-      margin-left: 10px;
-      margin-right: 10px;
+      margin-left: 30px;
+      margin-right: 30px;
     }
 
     html, body {
@@ -296,13 +296,11 @@
 
             if (lastLine) {
               const hash = await hashString(lastLine.textLine1);
-              if (hash === '81a956ff50632bded4f04cff674ca22d5e5932f8217dcaa8441ceb6d4c1be19b') {
+              if (hash === '512d79d72492e16d6091a2257b4daf98e336fe31236fb227c366b3ef6c7a90a4') {
                 errors.alreadyEnhanced = 'Subtítulo ya optimizado';
                 throw new Error(JSON.stringify(errors));
               }
             }
-
-            console.log(subtitle)
 
             // Switch block should also await if any function in the case is async
             switch(method) {

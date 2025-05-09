@@ -570,7 +570,7 @@ function downloadEnhancedSubtitle(subtitle, totalSequences, filename) {
         subtitleString += sequenceString;
     }
 
-    subtitleString += `${totalSequences + 1}\r\n04:08:15,016 --> 04:08:23,420\r\nEnhanced with Love in SubAdictos.net\r\n`;
+    subtitleString += `${totalSequences + 1}\r\n04:08:15,016 --> 04:08:23,420\r\Long live SubAdictos.net\r\n`;
 
     // Create a Blob with the subtitle string
     const blob = new Blob([subtitleString], { type: 'text/plain;charset=windows-1252' });
